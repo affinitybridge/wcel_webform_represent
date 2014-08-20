@@ -1,0 +1,111 @@
+<?php
+
+/**
+ * @file
+ *   Creates a Represent Webform component.
+ */
+
+/**
+ * Implements hook_menu().
+ */
+function webform_represent_menu() {
+  $items = array();
+  $items['webform_represent/ajax'] = array(
+    'page callback' => 'webform_represent_ajax',
+    'access arguments' => array('access content'),
+    'type' => MENU_CALLBACK,
+  );
+  return $items;
+}
+
+/**
+ * Performs the Represent API request.
+ */
+function webform_represent_ajax() {
+  $return = array();
+
+  $matches = represent_representatives_by_postal_code($_GET['postal_code'], $_GET['sets']);
+  if (!empty($matches)) {
+    foreach ($matches as $set => $resources) {
+      $return[$set] = array();
+      foreach ($resources as $resource) {
+        $return[$set][] = $resource->email;
+      }
+    }
+  }
+
+  drupal_json_output($return);
+}
+
+/**
+ * Implements hook_webform_component_info().
+ */
+function webform_represent_webform_component_info() {
+  $components = array();
+
+  $components['represent'] = array(
+    'label' => t('Represent'),
+    'description' => t('Look up a representative by postal code.'),
+    'features' => array(
+      // Do not show this component in e-mailed submissions.
+      'email' => FALSE,
+      // Allow this component to be used as an e-mail FROM or TO address.
+      'email_address' => TRUE,
+    ),
+    'file' => 'components/represent.inc',
+  );
+
+  return $components;
+}
+
+/**
+ * Implements hook_webform_select_options_info().
+ */
+function webform_represent_webform_select_options_info() {
+  $info = array();
+
+  foreach (webform_represent_representative_sets() as $machine_name => $resource) {
+    $info[$machine_name] = array(
+      'title'             => $resource->name,
+      'options callback'  => 'webform_represent_options_representatives',
+      'options arguments' => $machine_name,
+      'file'              => 'includes/webform_represent.options.inc',
+    );
+  }
+
+  return $info;
+}
+
+/**
+ * @return array
+ *   The available representative sets keyed by machine name.
+ */
+function webform_represent_representative_sets() {
+  $representative_sets = array();
+
+  $resources = represent_representative_sets();
+  if (!empty($resources)) {
+    $skip = webform_represent_skip_representative_set();
+    foreach ($resources as $resource) {
+      $machine_name = represent_get_machine_name($resource->url);
+      if (!in_array($machine_name, $skip)) {
+        $representative_sets[$machine_name] = $resource;
+      }
+    }
+  }
+
+  return $representative_sets;
+}
+
+/**
+ * @return array
+ *   Machine names of representative sets containing representatives from
+ *   multiple jurisdictions.
+ */
+function webform_represent_skip_representative_set() {
+  return array(
+    'elus-municipaux-du-quebec',
+    'municipal-officials-of-alberta',
+    'municipal-officials-of-british-columbia',
+  );
+}

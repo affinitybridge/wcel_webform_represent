@@ -1,0 +1,8 @@
+name = Webform Represent
+description = Creates a Represent Webform component.
+core = 7.x
+dependencies[] = webform
+dependencies[] = represent
+package = Webform
+files[] = components/represent.inc
+files[] = includes/webform_represent.options.inc
